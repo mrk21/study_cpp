@@ -9,9 +9,9 @@ else()
   message(FATAL_ERROR "Supported compiler is Clang!")
 endif()
 
-find_package(Boost 1.56 REQUIRED system thread)
+find_package(Boost 1.56 REQUIRED)
 
-set(CMAKE_CXX_FLAGS "-std=gnu++14 -stdlib=libc++ -Wall -Wextra")
+set(CMAKE_CXX_FLAGS "-std=gnu++14 -stdlib=libc++ -Wall -Wextra -Wno-unused-comparison")
 
 file(GLOB_RECURSE StudyCPP_SOURCES "*.cpp")
 
@@ -19,5 +19,4 @@ foreach(_path ${StudyCPP_SOURCES})
   get_filename_component(_name ${_path} NAME_WE)
   set(_bin_name "${_name}")
   add_executable(${_bin_name} ${_path})
-  target_link_libraries(${_bin_name} ${Twit4v_LIBRARY_NAME})
 endforeach()
