@@ -8,40 +8,42 @@ int main() {
     
     asio::io_service io_service;
     tcp::socket socket(io_service);
-    
-    // name resolution
     tcp::resolver resolver(io_service);
-    tcp::resolver::query query("www.boost.org", "http");
-    tcp::endpoint endpoint(*resolver.resolve(query));
-    
-    // connect
     asio::streambuf request;
     asio::streambuf response;
     
-    socket.async_connect(endpoint, [&](auto & error){
+    // name resolution
+    resolver.async_resolve({"www.boost.org", "http"}, [&](auto & error, auto it){
         if (error) {
-            std::cout << error.message() << std::endl;
+            std::cout << "resolve failed: " << error.message() << std::endl;
             return;
         }
         
-        // request
-        std::ostream request_stream(&request);
-        request_stream
-            << "GET / HTTP 1.0\r\n"
-            << "Host: www.boost.org\r\n"
-            << "\r\n";
-        
-        asio::async_write(socket, request, [&](auto &, auto){
-            // response
-            asio::async_read(socket, response, asio::transfer_all(), [&](auto & error, auto){
-                if (error && error != asio::error::eof) {
-                    std::cout << "receive failed: " << error.message() << std::endl;
-                }
-                else {
+        // connect
+        socket.async_connect(*it, [&](auto & error){
+            if (error) {
+                std::cout << "connect failed: " << error.message() << std::endl;
+                return;
+            }
+            
+            // request
+            std::ostream request_stream(&request);
+            request_stream
+                << "GET / HTTP 1.0\r\n"
+                << "Host: www.boost.org\r\n"
+                << "\r\n";
+            
+            asio::async_write(socket, request, [&](auto &, auto){
+                // response
+                asio::async_read(socket, response, asio::transfer_all(), [&](auto & error, auto){
+                    if (error && error != asio::error::eof) {
+                        std::cout << "receive failed: " << error.message() << std::endl;
+                        return;
+                    }
                     std::istream response_stream(&response);
                     std::string l;
                     while (std::getline(response_stream,l)) std::cout << l << std::endl;
-                }
+                });
             });
         });
     });
