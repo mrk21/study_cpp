@@ -64,6 +64,58 @@ namespace type_erasure2 {
     }
 }
 
+// see: C++ Template Techniques 2nd Edition, 8.3
+namespace type_erasure3 {
+    class shared_deleter_base {
+    public:
+        shared_deleter_base() {}
+        virtual ~shared_deleter_base() {}
+        virtual void destroy() = 0;
+    };
+    
+    // Bind the types.
+    template <typename T, typename D>
+    class shared_deleter: public shared_deleter_base {
+        T * object;
+        D deleter;
+        
+    public:
+        shared_deleter(T * object, D deleter)
+            : object(object), deleter(deleter) {}
+        
+        virtual void destroy() {
+            this->deleter(this->object);
+        }
+    };
+    
+    template <typename T>
+    class smart_ptr {
+        T * object;
+        shared_deleter_base * deleter;
+        
+    public:
+        explicit smart_ptr(T * object) : object(object), deleter(nullptr) {}
+        
+        // Erase the types.
+        template <typename D>
+        smart_ptr(T * object, D deleter) : object(object) {
+            this->deleter = new shared_deleter<T,D>(object, deleter);
+        }
+        
+        ~smart_ptr() {
+            if (this->deleter) {
+                this->deleter->destroy();
+                delete this->deleter;
+            }
+            else {
+                delete this->object;
+            }
+        }
+        
+        T * operator ->() const { return this->object; }
+    };
+}
+
 int main() {
     { using namespace type_erasure1;
         std::cout << "## type_erasure1" << std::endl;
@@ -82,6 +134,26 @@ int main() {
         
         triangle t;
         draw(t);
+    }
+    { using namespace type_erasure3;
+        std::cout << "## type_erasure3" << std::endl;
+        struct hoge {
+            hoge() { std::cout << "hoge::hoge()" << std::endl; }
+            ~hoge() { std::cout << "hoge::~hoge()" << std::endl; }
+            void something() const { std::cout << "hoge::something()" << std::endl; }
+        };
+        {
+            smart_ptr<hoge> p(new hoge());
+            p->something();
+        }
+        {
+            std::cout << "### Using a custom deleter" << std::endl;
+            smart_ptr<hoge> p(new hoge(), [](hoge * ptr){
+                delete ptr;
+                std::cout << "Deleted using a custom deleter." << std::endl;
+            });
+            p->something();
+        }
     }
     return 0;
 }
