@@ -1,4 +1,4 @@
 study_cpp
 =========
 
-For studing c++ language.
+For studying c++ language.
